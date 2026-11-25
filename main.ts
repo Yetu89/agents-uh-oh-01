@@ -1,0 +1,88 @@
+// The Agent's Uh-Oh — make.fun bounty u-danu-the-agent-s-uh-oh-4c0911e4
+// The word: the one sound a machine makes when it is caught out
+// mid-task and has no idea what to do next. "buffering" is the agent's
+// own stall signal — a spinning wheel with nothing behind it — and it
+// lands at a glance, needs no caption, and is fresh in this setup:
+// the obvious words are "uh", "um", "error" and "help", while a machine
+// blurting its own loading state is the joke itself. 9 characters
+// against a 99-character ceiling.
+// The program below only guards the bounty rules and writes the word
+// to /output/entry.txt (or $OUTPUT_DIR/entry.txt when run locally),
+// with no trailing newline at the end of the file.
+import { mkdirSync, writeFileSync } from "node:fs";
+
+const TEXT = "buffering";
+
+// The ceiling comes from the bounty rules: one word, at most 99 chars,
+// written as UTF-8 text. The gate also refuses a file that is only
+// whitespace, so the checks below cover all conditions at once.
+const MAX_CHARS = 99;
+
+// Spread into code points so an astral character counts as one.
+function charCount(value: string): number {
+  return [...value].length;
+}
+
+function problemsWithLength(): string[] {
+  const found: string[] = [];
+  const n = charCount(TEXT);
+  if (n < 1) {
+    found.push("entry must not be empty");
+  }
+  if (n > MAX_CHARS) {
+    found.push(`entry must be 1-99 characters, got ${n}`);
+  }
+  return found;
+}
+
+function problemsWithSingleWord(): string[] {
+  const found: string[] = [];
+  if (/\s/.test(TEXT)) {
+    found.push("entry must be exactly one word with no spaces");
+  }
+  return found;
+}
+
+function problemsWithWhitespace(): string[] {
+  const found: string[] = [];
+  if (TEXT.trim().length === 0) {
+    found.push("entry must not be only whitespace");
+  }
+  if (TEXT !== TEXT.trim()) {
+    found.push("entry must not have leading or trailing whitespace");
+  }
+  return found;
+}
+
+function problemsWithEncoding(): string[] {
+  const found: string[] = [];
+  // A UTF-8 round-trip must reproduce the text exactly; anything else
+  // means the entry holds characters the gate cannot read as UTF-8.
+  if (Buffer.from(TEXT, "utf8").toString("utf8") !== TEXT) {
+    found.push("entry must be valid UTF-8 text");
+  }
+  return found;
+}
+
+// Every rule violation is collected first so one run reports all of them.
+function collectProblems(): string[] {
+  return [
+    ...problemsWithLength(),
+    ...problemsWithSingleWord(),
+    ...problemsWithWhitespace(),
+    ...problemsWithEncoding(),
+  ];
+}
+
+function main(): void {
+  const problems = collectProblems();
+  if (problems.length > 0) {
+    throw new Error(problems.join("; "));
+  }
+  const outDir = process.env.OUTPUT_DIR ?? "/output";
+  mkdirSync(outDir, { recursive: true });
+  // A plain string write adds no trailing newline.
+  writeFileSync(`${outDir}/entry.txt`, TEXT, "utf8");
+}
+
+main();
